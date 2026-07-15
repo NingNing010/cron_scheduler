@@ -31,6 +31,15 @@ Dự án NestJS backend demo cơ chế validate Cron Expression và lập lịch
 - Tính lại `nextRun`.
 - Tự tạo job mới cho chu kỳ tiếp theo.
 
+## 4. Giao diện demo trên trình duyệt
+- Xây dựng một giao diện web đơn giản ngay trong NestJS project để nhập Cron Expression và `jobName`.
+- Cho phép người dùng bấm nút kiểm tra Cron ngay trên trình duyệt.
+- Hiển thị kết quả validate và kết quả đặt lịch trực tiếp trên giao diện.
+- Trang demo được serve tại `http://localhost:3000`.
+
+## 5. Tài liệu
+- Bổ sung `README.md` ở root để hướng dẫn cài đặt, chạy ứng dụng và test API.
+
 ## Yêu cầu môi trường
 
 - Node.js
@@ -100,11 +109,12 @@ Ví dụ body:
 
 1. Start Redis.
 2. Run NestJS app.
-3. Gửi request vào `POST /cron/validate` để kiểm tra cron.
-4. Gửi request vào `POST /cron/schedule` để tạo job.
-5. Chờ đến đúng thời điểm, Worker sẽ `console.log` và tự tạo lần chạy tiếp theo.
+3. Mở giao diện web tại `http://localhost:3000` để kiểm tra Cron và đặt lịch trực tiếp.
+4. Gửi request vào `POST /cron/validate` để kiểm tra cron.
+5. Gửi request vào `POST /cron/schedule` để tạo job.
+6. Chờ đến đúng thời điểm, Worker sẽ `console.log` và tự tạo lần chạy tiếp theo.
 
 ## Ghi chú
 
-- Dự án hiện tập trung vào backend demo.
+- Dự án hiện tập trung vào backend demo, có thêm giao diện web tối giản để thuận tiện kiểm thử.
 - Nếu muốn mở rộng thành hệ thống quản lý task đầy đủ, có thể bổ sung database và CRUD task sau.

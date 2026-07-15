@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { AppController } from './app.controller';
 import { CronValidationModule } from './cron/cron-validation.module';
 import { CronScheduleModule } from './cron/cron-schedule.module';
 
@@ -14,5 +15,6 @@ import { CronScheduleModule } from './cron/cron-schedule.module';
     CronValidationModule,
     CronScheduleModule,
   ],
+  controllers: [AppController],
 })
 export class AppModule {}

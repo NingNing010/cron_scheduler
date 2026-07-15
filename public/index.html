@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cron Scheduler Demo</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card hero">
+        <p class="eyebrow">NestJS · Cron Parser · BullMQ · Redis</p>
+        <h1>Cron Scheduler Demo</h1>
+        <p class="lead">Nhập Cron, kiểm tra kết quả và đặt lịch chạy tự động bằng queue.</p>
+      </section>
+
+      <section class="grid">
+        <article class="card form-card">
+          <h2>Nhập Cron</h2>
+          <label>Job name <input id="jobName" value="Send Daily Email" /></label>
+          <label>Minute <input id="minute" value="0" /></label>
+          <label>Hour <input id="hour" value="9" /></label>
+          <label>Day <input id="day" value="*" /></label>
+          <label>Month <input id="month" value="*" /></label>
+          <label>Weekday <input id="weekday" value="*" /></label>
+          <div class="actions">
+            <button id="validateBtn" type="button">Kiểm tra Cron</button>
+            <button id="scheduleBtn" type="button">Đặt lịch</button>
+          </div>
+        </article>
+
+        <article class="card result-card">
+          <h2>Kết quả</h2>
+          <pre id="output">Chưa có dữ liệu</pre>
+        </article>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
