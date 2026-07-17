@@ -9,14 +9,16 @@
   <body>
     <main class="shell">
       <section class="card hero">
-        <p class="eyebrow">NestJS · Cron Parser · BullMQ · Redis</p>
+        <p class="eyebrow">NestJS · Cron Parser · BullMQ · Prisma · Redis</p>
         <h1>Cron Scheduler Demo</h1>
-        <p class="lead">Nhập Cron, kiểm tra kết quả và đặt lịch chạy tự động bằng queue.</p>
+        <p class="lead">
+          Validate Cron, tạo Task, xem danh sách từ SQLite và đặt lịch chạy tự động bằng BullMQ.
+        </p>
       </section>
 
       <section class="grid">
         <article class="card form-card">
-          <h2>Nhập Cron</h2>
+          <h2>Nhập Cron để kiểm tra / schedule</h2>
           <label>Job name <input id="jobName" value="Send Daily Email" /></label>
           <label>Minute <input id="minute" value="0" /></label>
           <label>Hour <input id="hour" value="9" /></label>
@@ -30,9 +32,33 @@
         </article>
 
         <article class="card result-card">
-          <h2>Kết quả</h2>
+          <h2>Kết quả Cron</h2>
           <pre id="output">Chưa có dữ liệu</pre>
         </article>
+      </section>
+
+      <section class="card task-card">
+        <div class="task-head">
+          <div>
+            <h2>CRUD Task</h2>
+            <p class="lead small">Lưu task vào SQLite bằng Prisma rồi đồng bộ job sang BullMQ.</p>
+          </div>
+          <div class="actions">
+            <button id="refreshTasksBtn" type="button">Làm mới danh sách</button>
+          </div>
+        </div>
+
+        <div class="task-create-grid">
+          <label>Tên task <input id="taskName" value="Send Daily Email" /></label>
+          <label>Cron Expression <input id="taskCronExpression" value="0 9 * * *" /></label>
+        </div>
+        <div class="actions">
+          <button id="createTaskBtn" type="button">Tạo Task</button>
+        </div>
+
+        <div class="task-table-wrap">
+          <div id="taskOutput" class="task-output">Đang tải task...</div>
+        </div>
       </section>
     </main>
     <script src="/app.js"></script>

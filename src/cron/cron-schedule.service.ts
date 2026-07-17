@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { CronExpressionParser } from 'cron-parser';
 import { buildCronExpression } from './cron-expression.util';
@@ -24,21 +24,34 @@ export class CronScheduleService {
 
   async schedule(dto: CronScheduleDto): Promise<ScheduleCronResponse> {
     const cronExpression = buildCronExpression(dto);
-    const interval = CronExpressionParser.parse(cronExpression);
-    const nextRun = interval.next().toDate();
+    let nextRun: Date;
+
+    try {
+      const interval = CronExpressionParser.parse(cronExpression);
+      nextRun = interval.next().toDate();
+    } catch (error) {
+      throw new BadRequestException('Invalid cron expression');
+    }
+
     const delayTime = Math.max(nextRun.getTime() - Date.now(), 0);
 
-    await this.cronQueue.add(
-      dto.jobName,
-      {
-        jobName: dto.jobName,
-        cronExpression,
-        nextRun: nextRun.toISOString(),
-      },
-      {
-        delay: delayTime,
-      },
-    );
+    try {
+      await this.cronQueue.add(
+        dto.jobName,
+        {
+          jobName: dto.jobName,
+          cronExpression,
+          nextRun: nextRun.toISOString(),
+        },
+        {
+          delay: delayTime,
+          removeOnComplete: true,
+        },
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to schedule job';
+      throw new BadRequestException(message);
+    }
 
     return {
       success: true,
