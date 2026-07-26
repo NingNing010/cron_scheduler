@@ -14,8 +14,8 @@ export class MailService {
       rateDelta: 10000,       // 3. Khối thời gian: 10 giây
       rateLimit: 5,           // 4. Giới hạn tối đa gửi 5 mail / 10 giây qua đường ống này
       auth: {
-        user: 'dangninh014@gmail.com', // Thay bằng Gmail của bạn
-        pass: 'gqbl dagl jmhi cwmw',        // Thay bằng Mật khẩu ứng dụng 16 ký tự
+        user: process.env.MAIL_USER || 'default_email@gmail.com',
+        pass: process.env.MAIL_PASS || '',
       },
     });
   }
