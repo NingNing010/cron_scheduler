@@ -8,10 +8,24 @@ datasource db {
 }
 
 model Task {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   name           String
-  cronExpression String
+  cronExpression String    // Sẽ chứa chuỗi 6 trường (có giây)
+  recipientEmail String    // Email người nhận
+  subject        String    // Tiêu đề email
+  content        String    // Nội dung email
+  status         String    @default("ACTIVE")
   nextRun        DateTime?
-  status         String   @default("ACTIVE")
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
+  
+  logs           JobLog[]  // Quan hệ 1-N với bảng Log
+}
+
+model JobLog {
+  id          Int      @id @default(autoincrement())
+  taskId      Int
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  status      String   // "SENDING", "COMPLETED", "FAILED"
+  message     String?  // Ghi chú (Hoặc chi tiết lỗi nếu thất bại)
+  executedAt  DateTime @default(now())
 }
