@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsDefined, IsString, MinLength } from 'class-validator';
+import { IsDefined, IsOptional, IsString, MinLength } from 'class-validator';
 import { IsCronField } from './cron-field.validator';
 
 const trimStringIfPresent = ({ value }: { value: unknown }) => {
@@ -11,6 +11,13 @@ const trimStringIfPresent = ({ value }: { value: unknown }) => {
 };
 
 export class ValidateCronDto {
+  // Thêm trường second (Giây)
+  @Transform(trimStringIfPresent)
+  @IsOptional()
+  @IsString()
+  @IsCronField({ message: 'second has invalid cron syntax' })
+  second?: string = '0';
+
   @Transform(trimStringIfPresent)
   @IsDefined()
   @IsString()
