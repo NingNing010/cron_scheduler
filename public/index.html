@@ -3,64 +3,104 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Cron Scheduler Demo</title>
+    <title>Hệ Thống Lập Lịch Tự Động - Cron Email Scheduler</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="shell">
-      <section class="card hero">
-        <p class="eyebrow">NestJS · Cron Parser · BullMQ · Prisma · Redis</p>
-        <h1>Cron Scheduler Demo</h1>
-        <p class="lead">
-          Validate Cron, tạo Task, xem danh sách từ SQLite và đặt lịch chạy tự động bằng BullMQ.
-        </p>
-      </section>
+    <!-- HEADER NAVBAR -->
+    <header class="top-nav">
+      <div class="nav-content">
+        <div class="logo">
+          <span class="logo-icon">⚡</span>
+          <strong>CronMail Pro</strong>
+          <span class="tag">Production Dashboard</span>
+        </div>
+        <div class="tech-stack">
+          <span>NestJS</span> • <span>BullMQ</span> • <span>Prisma</span> • <span>Redis</span> • <span>Nodemailer</span>
+        </div>
+      </div>
+    </header>
 
-      <section class="grid">
-        <article class="card form-card">
-          <h2>Nhập Cron để kiểm tra / schedule</h2>
-          <label>Job name <input id="jobName" value="Send Daily Email" /></label>
-          <label>Minute <input id="minute" value="0" /></label>
-          <label>Hour <input id="hour" value="9" /></label>
-          <label>Day <input id="day" value="*" /></label>
-          <label>Month <input id="month" value="*" /></label>
-          <label>Weekday <input id="weekday" value="*" /></label>
-          <div class="actions">
-            <button id="validateBtn" type="button">Kiểm tra Cron</button>
-            <button id="scheduleBtn" type="button">Đặt lịch</button>
-          </div>
-        </article>
-
-        <article class="card result-card">
-          <h2>Kết quả Cron</h2>
-          <pre id="output">Chưa có dữ liệu</pre>
-        </article>
-      </section>
-
-      <section class="card task-card">
-        <div class="task-head">
+    <!-- MAIN CONTENT -->
+    <main class="container">
+      <!-- KHỐI TẠO TASK GỬI MAIL -->
+      <section class="panel">
+        <div class="panel-header">
           <div>
-            <h2>CRUD Task</h2>
-            <p class="lead small">Lưu task vào SQLite bằng Prisma rồi đồng bộ job sang BullMQ.</p>
-          </div>
-          <div class="actions">
-            <button id="refreshTasksBtn" type="button">Làm mới danh sách</button>
+            <h2>Tạo Tác Vụ Lập Lịch Mới</h2>
+            <p class="subtitle">Thiết lập thời gian và nội dung email tự động gửi đi qua hệ thống hàng đợi Redis.</p>
           </div>
         </div>
 
-        <div class="task-create-grid">
-          <label>Tên task <input id="taskName" value="Send Daily Email" /></label>
-          <label>Cron Expression <input id="taskCronExpression" value="0 9 * * *" /></label>
-        </div>
-        <div class="actions">
-          <button id="createTaskBtn" type="button">Tạo Task</button>
+        <form id="createTaskForm" class="form-grid">
+          <div class="form-group">
+            <label for="taskName">Tên tác vụ</label>
+            <input id="taskName" type="text" value="Gửi Báo Cáo Doanh Thu" placeholder="Nhập tên dễ nhớ..." />
+          </div>
+
+          <div class="form-group">
+            <label for="taskCronExpression">Chu kỳ Cron (6 trường - Có giây)</label>
+            <input id="taskCronExpression" type="text" value="*/10 * * * * *" placeholder="vd: */10 * * * * *" />
+            <small class="help-text">Mặc định: <code>*/10 * * * * *</code> (Gửi tự động mỗi 10 giây)</small>
+          </div>
+
+          <div class="form-group">
+            <label for="taskRecipientEmail">Email người nhận</label>
+            <input id="taskRecipientEmail" type="email" value="email_cua_ban@gmail.com" placeholder="name@example.com" />
+          </div>
+
+          <div class="form-group">
+            <label for="taskSubject">Tiêu đề Email</label>
+            <input id="taskSubject" type="text" value="Thông báo từ hệ thống tự động" />
+          </div>
+
+          <div class="form-group full-width">
+            <label for="taskContent">Nội dung thông điệp</label>
+            <textarea id="taskContent" rows="2" placeholder="Nhập nội dung email sẽ gửi...">Đây là email tự động được lập lịch và phát đi từ backend NestJS kết hợp BullMQ.</textarea>
+          </div>
+
+          <div class="form-actions full-width">
+            <button id="createTaskBtn" type="button" class="btn btn-primary">
+              <span>+</span> Thêm Tác Vụ Gửi Mail
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- KHỐI DANH SÁCH TÁC VỤ ĐANG CHẠY -->
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Danh Sách Tác Vụ & Hàng Đợi</h2>
+            <p class="subtitle">Hệ thống tự động cập nhật thời gian chạy tiếp theo mỗi 5 giây.</p>
+          </div>
+          <button id="refreshTasksBtn" type="button" class="btn btn-secondary">
+            ↻ Làm mới
+          </button>
         </div>
 
-        <div class="task-table-wrap">
-          <div id="taskOutput" class="task-output">Đang tải task...</div>
+        <div class="table-responsive">
+          <div id="taskOutput" class="loading-state">Đang tải dữ liệu từ SQLite...</div>
         </div>
       </section>
     </main>
+
+    <!-- HỘP THOẠI MODAL XEM LỊCH SỬ LOG -->
+    <div id="logModal" class="modal">
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>Lịch Sử Thực Thi - Task #<span id="modalTaskId"></span></h3>
+          <button id="closeModalBtn" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="live-indicator">
+            <span class="pulse"></span> Đang tự động cập nhật log thực tế mỗi 2 giây...
+          </div>
+          <div id="modalLogContent">Đang tải lịch sử...</div>
+        </div>
+      </div>
+    </div>
+
     <script src="/app.js"></script>
   </body>
 </html>
