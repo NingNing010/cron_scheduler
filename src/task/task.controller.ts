@@ -20,4 +20,9 @@ export class TaskController {
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.taskService.delete(id);
   }
+
+  @Get(':id/logs')
+  getLogs(@Param('id', ParseIntPipe) id: number) {
+    return this.taskService.getTaskLogs(id);
+  }
 }
