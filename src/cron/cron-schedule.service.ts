@@ -39,6 +39,7 @@ export class CronScheduleService {
       await this.cronQueue.add(
         dto.jobName,
         {
+          jobType: 'mail',
           jobName: dto.jobName,
           cronExpression,
           nextRun: nextRun.toISOString(),

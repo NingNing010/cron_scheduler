@@ -7,8 +7,22 @@ import { DynamicCronJobData } from './cron-job.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../task/mail.service';
 import { TaskService } from '../task/task.service';
+import { SyncService } from '../sync/sync.service';
 
 const buildTaskJobId = (taskId: number, nextRun: Date) => `task-${taskId}-${nextRun.getTime()}`;
+const buildSyncJobId = (jobName: string, nextRun: Date) => `sync-${jobName}-${nextRun.getTime()}`;
+
+const getNextRun = (cronExpression: string, fallback?: string) => {
+  if (fallback) {
+    const parsedDate = new Date(fallback);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return parsedDate;
+    }
+  }
+
+  const interval = CronExpressionParser.parse(cronExpression);
+  return interval.next().toDate();
+};
 
 @Processor(DYNAMIC_CRON_QUEUE)
 @Injectable()
@@ -21,17 +35,32 @@ export class CronWorker extends WorkerHost {
     private readonly prismaService: PrismaService,
     private readonly mailService: MailService,
     private readonly taskService: TaskService,
+    private readonly syncService: SyncService,
   ) {
     super();
   }
 
   async process(job: Job<DynamicCronJobData>): Promise<void> {
-    const { taskId, jobName, cronExpression } = job.data;
+    const { taskId, jobName, cronExpression, jobType = taskId ? 'mail' : 'sync' } = job.data;
     const now = new Date();
 
     this.logger.log(`[CronWorker] Bắt đầu xử lý Job: ${jobName} (Task ID: ${taskId}) lúc ${now.toLocaleTimeString()}`);
 
-    if (!taskId) return;
+    if (jobType === 'sync') {
+      await this.processSyncJob(job);
+      return;
+    }
+
+    await this.processMailJob(job);
+  }
+
+  private async processMailJob(job: Job<DynamicCronJobData>) {
+    const { taskId, jobName, cronExpression } = job.data;
+
+    if (!taskId) {
+      return;
+    }
+
     const task = await this.prismaService.task.findFirst({
       where: { id: taskId, status: 'ACTIVE' },
     });
@@ -135,6 +164,47 @@ export class CronWorker extends WorkerHost {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`[Re-enqueue FAILED] Task ID ${taskId}: ${errorMessage}`);
+    }
+  }
+
+  private async processSyncJob(job: Job<DynamicCronJobData>) {
+    const { jobName, cronExpression, nextRun, syncBatchSize } = job.data;
+
+    try {
+      const result = await this.syncService.syncEmployees(syncBatchSize ?? 1000);
+      this.logger.log(`[SYNC SUCCESS] ${jobName}: ${result.syncedCount} synced, ${result.deletedCount} deleted.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[SYNC FAILED] ${jobName}: ${message}`);
+    }
+
+    try {
+      const nextRunDate = getNextRun(cronExpression, nextRun);
+      const delayTime = Math.max(nextRunDate.getTime() - Date.now(), 0);
+
+      await job.remove();
+
+      await this.cronQueue.add(
+        jobName,
+        {
+          jobType: 'sync',
+          jobName,
+          cronExpression,
+          nextRun: nextRunDate.toISOString(),
+          syncBatchSize,
+        },
+        {
+          delay: delayTime,
+          jobId: buildSyncJobId(jobName, nextRunDate),
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      );
+
+      this.logger.log(`[Re-enqueue] Đã đặt lịch sync tiếp theo cho ${jobName} vào lúc: ${nextRunDate.toLocaleTimeString()}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[SYNC Re-enqueue FAILED] ${jobName}: ${message}`);
     }
   }
 }
