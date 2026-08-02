@@ -15,6 +15,10 @@ model Task {
   subject        String    // Tiêu đề email
   content        String    // Nội dung email
   status         String    @default("ACTIVE")
+  sendCount      Int       @default(0)
+  maxMailCount   Int       @default(5)
+  pausedReason   String?
+  finishedAt     DateTime?
   nextRun        DateTime?
   createdAt      DateTime  @default(now())
   
