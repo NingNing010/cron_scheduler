@@ -6,8 +6,9 @@ import { DYNAMIC_CRON_QUEUE } from './dynamic-cron.constants';
 import { DynamicCronJobData } from './cron-job.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { MailService } from '../task/mail.service';
+import { TaskService } from '../task/task.service';
 
-const buildTaskJobId = (taskId: number) => `task-${taskId}`;
+const buildTaskJobId = (taskId: number, nextRun: Date) => `task-${taskId}-${nextRun.getTime()}`;
 
 @Processor(DYNAMIC_CRON_QUEUE)
 @Injectable()
@@ -19,6 +20,7 @@ export class CronWorker extends WorkerHost {
     private readonly cronQueue: Queue,
     private readonly prismaService: PrismaService,
     private readonly mailService: MailService,
+    private readonly taskService: TaskService,
   ) {
     super();
   }
@@ -48,8 +50,13 @@ export class CronWorker extends WorkerHost {
       },
     });
 
-    // 2. THỰC THI GỬI EMAIL (AN TOÀN HÓA KHÔNG GÂY ĐỨT CHUỖI CRON)
+    // 2. THỰC THI GỬI EMAIL
     try {
+      const healthy = await this.mailService.isHealthy();
+      if (!healthy) {
+        throw new Error('SMTP connection unavailable');
+      }
+
       await this.mailService.sendCronEmail(
         task.recipientEmail,
         task.subject,
@@ -77,48 +84,57 @@ export class CronWorker extends WorkerHost {
       });
 
       this.logger.error(`[JOB FAILED] Task ID ${taskId} thất bại: ${errorMessage}`);
-      
-      // ⚠️ QUAN TRỌNG: ĐÃ XÓA LỆNH "throw error;" Ở ĐÂY!
-      // Bỏ throw error để hệ thống chấp nhận lỗi gửi mail, ghi log đỏ,
-      // nhưng VẪN TIẾP TỤC CHẠY xuống dưới để lập lịch cho chu kỳ tiếp theo!
+
+      await this.taskService.markPaused(taskId, errorMessage);
+
+      await job.remove();
+      return;
     }
 
     // ----------------------------------------------------------------------------------
     // 3. TỰ ĐỘNG TÍNH TOÁN VÀ ĐẨY LẠI VÀO QUEUE (LUÔN CHẠY DÙ MAIL THÀNH CÔNG HAY LỖI)
     // ----------------------------------------------------------------------------------
-    const interval = CronExpressionParser.parse(cronExpression);
-    const nextRun = interval.next().toDate();
-    const delayTime = Math.max(nextRun.getTime() - Date.now(), 0);
+    try {
+      const updatedTask = await this.taskService.incrementSendCount(taskId);
 
-    await this.prismaService.task.update({
-      where: { id: taskId },
-      data: { nextRun },
-    });
+      if (updatedTask.sendCount >= (task.maxMailCount ?? 5)) {
+        await this.taskService.markFinished(taskId);
+        await job.remove();
+        this.logger.log(`[FINISHED] Task ID ${taskId} đã gửi đủ ${updatedTask.sendCount} mail và chuyển sang FINISHED.`);
+        return;
+      }
 
-    await job.remove();
+      const interval = CronExpressionParser.parse(cronExpression);
+      const nextRun = interval.next().toDate();
+      const delayTime = Math.max(nextRun.getTime() - Date.now(), 0);
 
-    // ⚠️ QUAN TRỌNG: Bổ sung cấu hình attempts & backoff vào đây để mọi chu kỳ sau
-    // đều có khả năng chống chịu lỗi CSDL hoặc lỗi hệ thống tốt như chu kỳ đầu tiên!
-    await this.cronQueue.add(
-      jobName,
-      {
-        taskId,
+      await this.prismaService.task.update({
+        where: { id: taskId },
+        data: { nextRun, status: 'ACTIVE', pausedReason: null },
+      });
+
+      await job.remove();
+
+      await this.cronQueue.add(
         jobName,
-        cronExpression,
-        nextRun: nextRun.toISOString(),
-      },
-      {
-        delay: delayTime,
-        jobId: buildTaskJobId(taskId),
-        removeOnComplete: true,
-        attempts: 3,
-        backoff: {
-          type: 'fixed',
-          delay: 5000,
+        {
+          taskId,
+          jobName,
+          cronExpression,
+          nextRun: nextRun.toISOString(),
         },
-      },
-    );
+        {
+          delay: delayTime,
+          jobId: buildTaskJobId(taskId, nextRun),
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      );
 
-    this.logger.log(`[Re-enqueue] Đã đặt lịch chạy tiếp theo cho Task ID ${taskId} vào lúc: ${nextRun.toLocaleTimeString()}`);
+      this.logger.log(`[Re-enqueue] Đã đặt lịch chạy tiếp theo cho Task ID ${taskId} vào lúc: ${nextRun.toLocaleTimeString()}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[Re-enqueue FAILED] Task ID ${taskId}: ${errorMessage}`);
+    }
   }
 }
