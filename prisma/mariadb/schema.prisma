@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../src/generated/mariadb"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("MARIADB_DATABASE_URL")
+}
+
+model Employee {
+  id               Int      @id @default(autoincrement())
+  code             String   @unique
+  fullName         String
+  email            String   @unique
+  phone            String?
+  department       String?
+  position         String?
+  notes            String?
+  avatarKey        String?
+  avatarUrl        String?
+  isSynced         Boolean  @default(true)
+  syncedAt         DateTime?
+  sourceUpdatedAt  DateTime?
+  deletedAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}

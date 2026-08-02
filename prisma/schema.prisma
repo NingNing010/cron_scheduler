@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -32,4 +32,34 @@ model JobLog {
   status      String   // "SENDING", "COMPLETED", "FAILED"
   message     String?  // Ghi chú (Hoặc chi tiết lỗi nếu thất bại)
   executedAt  DateTime @default(now())
+}
+
+model Employee {
+  id               Int      @id @default(autoincrement())
+  code             String   @unique
+  fullName         String
+  email            String   @unique
+  phone            String?
+  department       String?
+  position         String?
+  notes            String?
+  avatarKey        String?
+  avatarUrl        String?
+  isSynced         Boolean  @default(false)
+  syncedAt         DateTime?
+  sourceUpdatedAt  DateTime?
+  deletedAt        DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SyncRunLog {
+  id            Int      @id @default(autoincrement())
+  jobName       String
+  status        String
+  sourceCount   Int      @default(0)
+  syncedCount   Int      @default(0)
+  failedCount   Int      @default(0)
+  message       String?
+  executedAt    DateTime @default(now())
 }
