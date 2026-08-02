@@ -37,4 +37,15 @@ export class MailService {
       throw error;
     }
   }
+
+  async isHealthy(): Promise<boolean> {
+    try {
+      await this.transporter.verify();
+      return true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`SMTP chưa sẵn sàng: ${errorMessage}`);
+      return false;
+    }
+  }
 }
