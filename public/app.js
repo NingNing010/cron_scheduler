@@ -134,6 +134,7 @@ function renderTasks(tasks) {
           <th>ID</th>
           <th>Tác Vụ & Người Nhận</th>
           <th>Chu Kỳ Cron</th>
+          <th>Mail Đã Gửi</th>
           <th>Lần Chạy Tiếp Theo (Next Run)</th>
           <th>Trạng Thái</th>
           <th style="text-align: right;">Thao Tác</th>
@@ -150,6 +151,7 @@ function renderTasks(tasks) {
                   <div style="font-size: 0.8rem; color: #64748b;">💌 ${task.recipientEmail || 'N/A'}</div>
                 </td>
                 <td><code>${task.cronExpression}</code></td>
+                <td style="font-weight: 600; color: #0f172a;">${task.sendCount ?? 0}/${task.maxMailCount ?? 5}</td>
                 <td style="color: #2563eb; font-weight: 600;">${formatDate(task.nextRun)}</td>
                 <td><span class="pill">${task.status}</span></td>
                 <td style="text-align: right; white-space: nowrap;">
