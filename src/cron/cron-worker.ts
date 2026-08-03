@@ -116,7 +116,6 @@ export class CronWorker extends WorkerHost {
 
       await this.taskService.markPaused(taskId, errorMessage);
 
-      await job.remove();
       return;
     }
 
@@ -128,7 +127,6 @@ export class CronWorker extends WorkerHost {
 
       if (updatedTask.sendCount >= (task.maxMailCount ?? 5)) {
         await this.taskService.markFinished(taskId);
-        await job.remove();
         this.logger.log(`[FINISHED] Task ID ${taskId} đã gửi đủ ${updatedTask.sendCount} mail và chuyển sang FINISHED.`);
         return;
       }
@@ -141,8 +139,6 @@ export class CronWorker extends WorkerHost {
         where: { id: taskId },
         data: { nextRun, status: 'ACTIVE', pausedReason: null },
       });
-
-      await job.remove();
 
       await this.cronQueue.add(
         jobName,
@@ -181,8 +177,6 @@ export class CronWorker extends WorkerHost {
     try {
       const nextRunDate = getNextRun(cronExpression, nextRun);
       const delayTime = Math.max(nextRunDate.getTime() - Date.now(), 0);
-
-      await job.remove();
 
       await this.cronQueue.add(
         jobName,

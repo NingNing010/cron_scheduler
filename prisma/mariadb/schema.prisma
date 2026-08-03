@@ -16,9 +16,9 @@ model Employee {
   phone            String?
   department       String?
   position         String?
-  notes            String?
-  avatarKey        String?
-  avatarUrl        String?
+  notes            String?  @db.Text
+  avatarKey        String?  @db.Text
+  avatarUrl        String?  @db.Text
   isSynced         Boolean  @default(true)
   syncedAt         DateTime?
   sourceUpdatedAt  DateTime?
