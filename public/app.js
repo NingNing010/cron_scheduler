@@ -9,35 +9,25 @@ let taskPollingInterval = null;
 let employeePollingInterval = null;
 let currentEmployeeId = null;
 
-const ACCESS_STORAGE_KEY = 'cron-demo-access';
-const DEFAULT_ACCESS = {
-  roles: 'admin',
-  permissions: 'employee:read,employee:create,employee:update,employee:delete,employee:import,employee:export,employee:bulk-create,file:upload,health:read,sync:run,sync:schedule',
-};
+const ACCESS_STORAGE_KEY = 'cron-demo-token';
 
-function getAccessState() {
-  try {
-    return { ...DEFAULT_ACCESS, ...(JSON.parse(localStorage.getItem(ACCESS_STORAGE_KEY) || '{}') || {}) };
-  } catch {
-    return { ...DEFAULT_ACCESS };
+function getAuthToken() {
+  return localStorage.getItem(ACCESS_STORAGE_KEY) || '';
+}
+
+function saveAuthToken(token) {
+  if (token) {
+    localStorage.setItem(ACCESS_STORAGE_KEY, token);
+  } else {
+    localStorage.removeItem(ACCESS_STORAGE_KEY);
   }
 }
 
-function saveAccessState(state) {
-  localStorage.setItem(ACCESS_STORAGE_KEY, JSON.stringify(state));
-}
-
-function syncAccessInputs() {
-  const state = getAccessState();
-  document.getElementById('accessRoles').value = state.roles;
-  document.getElementById('accessPermissions').value = state.permissions;
-}
-
 function buildAuthHeaders() {
-  const state = getAccessState();
+  const token = getAuthToken();
+  if (!token) return {};
   return {
-    'x-roles': state.roles,
-    'x-permissions': state.permissions,
+    'Authorization': `Bearer ${token}`
   };
 }
 
@@ -64,33 +54,29 @@ function getEmployeePayload() {
   };
 }
 
+function handleAuthError() {
+  alert("Phiên đăng nhập đã hết hạn hoặc không có quyền, vui lòng đăng nhập lại.");
+  handleLogout();
+  throw new Error('Unauthorized');
+}
+
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
     ...options,
-    headers: {
-      ...buildAuthHeaders(),
-      ...(options.headers || {}),
-    },
+    headers: { ...buildAuthHeaders(), ...(options.headers || {}) },
   });
+  if (response.status === 401 || response.status === 403) return handleAuthError();
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.message || 'Yêu cầu thất bại');
   return data;
 }
 
 async function postJson(url, body) {
-  return requestJson(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  return requestJson(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 }
 
 async function patchJson(url, body) {
-  return requestJson(url, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  return requestJson(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 }
 
 async function deleteJson(url) {
@@ -99,20 +85,16 @@ async function deleteJson(url) {
 
 async function getJson(url) {
   const separator = url.includes('?') ? '&' : '?';
-  const response = await fetch(`${url}${separator}_t=${Date.now()}`, {
-    headers: buildAuthHeaders(),
-  });
+  const response = await fetch(`${url}${separator}_t=${Date.now()}`, { headers: buildAuthHeaders() });
+  if (response.status === 401 || response.status === 403) return handleAuthError();
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.message || 'Yêu cầu thất bại');
   return data;
 }
 
 async function postFormData(url, formData) {
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: buildAuthHeaders(),
-    body: formData,
-  });
+  const response = await fetch(url, { method: 'POST', headers: buildAuthHeaders(), body: formData });
+  if (response.status === 401 || response.status === 403) return handleAuthError();
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.message || 'Yêu cầu thất bại');
   return data;
@@ -120,11 +102,11 @@ async function postFormData(url, formData) {
 
 async function downloadFile(url, filename) {
   const response = await fetch(url, { headers: buildAuthHeaders() });
+  if (response.status === 401 || response.status === 403) return handleAuthError();
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.message || 'Tải file thất bại');
   }
-
   const blob = await response.blob();
   const blobUrl = URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -142,13 +124,177 @@ function formatDate(value) {
   return `${date.toLocaleTimeString('vi-VN')} - ${date.toLocaleDateString('vi-VN')}`;
 }
 
-function applyDefaultAccess() {
-  if (!localStorage.getItem(ACCESS_STORAGE_KEY)) {
-    saveAccessState(DEFAULT_ACCESS);
+function handleLogout() {
+  saveAuthToken(null);
+  checkGateway();
+}
+
+function checkGateway() {
+  const token = getAuthToken();
+  const gateway = document.getElementById('auth-gateway');
+  const dashboard = document.getElementById('app-dashboard');
+  const authTitle = document.getElementById('authTitle');
+  
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      window.currentUserPayload = payload;
+      document.getElementById('headerUserText').textContent = `Xin chào, ${payload.username} (${payload.roles?.join(', ') || 'employee'})`;
+      gateway.classList.add('is-hidden');
+      dashboard.classList.remove('is-hidden');
+      
+      // Load data on start
+      applyPermissions(payload);
+      loadTasks();
+      loadEmployees();
+      
+      if (taskPollingInterval) clearInterval(taskPollingInterval);
+      taskPollingInterval = setInterval(() => loadTasks(true), 5000);
+      
+      if (employeePollingInterval) clearInterval(employeePollingInterval);
+      employeePollingInterval = setInterval(() => loadEmployees(true), 7000);
+      
+    } catch {
+      handleLogout();
+    }
+  } else {
+    gateway.classList.remove('is-hidden');
+    dashboard.classList.add('is-hidden');
+    authTitle.innerHTML = 'Đăng Nhập Hệ Thống';
+    
+    // Clear intervals
+    if (taskPollingInterval) clearInterval(taskPollingInterval);
+    if (employeePollingInterval) clearInterval(employeePollingInterval);
+  }
+}
+
+function applyPermissions(payload) {
+  const roles = payload.roles || [];
+  const permissions = payload.permissions || [];
+  const isAdmin = roles.includes('admin') || permissions.includes('manage:all');
+  const hasEmployeeCreate = permissions.includes('employee:create') || isAdmin;
+  const hasEmployeeUpdate = permissions.includes('employee:update') || isAdmin;
+  const hasTaskCreate = permissions.includes('task:create') || isAdmin;
+
+  // Health & Sync tab
+  const healthSyncTab = document.querySelector('[data-tab-target="health-sync"]');
+  if (healthSyncTab) healthSyncTab.style.display = isAdmin ? 'inline-block' : 'none';
+  if (!isAdmin && healthSyncTab && healthSyncTab.classList.contains('is-active')) {
+    activateTab('tasks');
   }
 
-  syncAccessInputs();
+  // Task Create Form
+  const createTaskForm = document.getElementById('createTaskForm');
+  if (createTaskForm && createTaskForm.parentElement) {
+    createTaskForm.parentElement.style.display = hasTaskCreate ? 'block' : 'none';
+  }
+
+  // Employee Form
+  const employeeForm = document.getElementById('employeeForm');
+  if (employeeForm) employeeForm.style.display = (hasEmployeeCreate || hasEmployeeUpdate) ? 'grid' : 'none';
+
+  // Advanced features
+  const bulkCount = document.getElementById('employeeBulkCount')?.parentElement;
+  const bulkBtn = document.getElementById('bulkGenerateBtn');
+  const importFile = document.getElementById('employeeImportFile')?.parentElement;
+  const importBtn = document.getElementById('importEmployeesBtn')?.parentElement;
+  const uploadFile = document.getElementById('minioUploadFile')?.parentElement;
+  const uploadBtn = document.getElementById('uploadMinioBtn')?.parentElement;
+
+  if (bulkCount) bulkCount.style.display = hasEmployeeCreate ? 'block' : 'none';
+  if (bulkBtn) bulkBtn.style.display = hasEmployeeCreate ? 'inline-block' : 'none';
+  if (importFile) importFile.style.display = hasEmployeeCreate ? 'block' : 'none';
+  if (importBtn) importBtn.style.display = hasEmployeeCreate ? 'flex' : 'none';
+  if (uploadFile) uploadFile.style.display = hasEmployeeCreate ? 'block' : 'none';
+  if (uploadBtn) uploadBtn.style.display = hasEmployeeCreate ? 'flex' : 'none';
 }
+
+document.getElementById('showRegisterBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  document.getElementById('loginForm').classList.add('is-hidden');
+  document.getElementById('registerForm').classList.remove('is-hidden');
+  document.getElementById('authTitle').innerHTML = 'Đăng Ký Tài Khoản';
+});
+
+document.getElementById('showLoginBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  document.getElementById('registerForm').classList.add('is-hidden');
+  document.getElementById('loginForm').classList.remove('is-hidden');
+  document.getElementById('authTitle').innerHTML = 'Đăng Nhập Hệ Thống';
+});
+
+document.getElementById('loginBtn')?.addEventListener('click', async () => {
+  const usernameInput = document.getElementById('loginUsername').value.trim();
+  const passwordInput = document.getElementById('loginPassword').value.trim();
+  
+  if (!usernameInput || !passwordInput) return alert('Nhập username và password.');
+  const btn = document.getElementById('loginBtn');
+  btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px;"></div>';
+  
+  try {
+    const res = await fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: usernameInput, password: passwordInput })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    
+    saveAuthToken(data.access_token);
+    checkGateway();
+  } catch (err) {
+    alert('Đăng nhập thất bại: ' + err.message);
+  } finally {
+    btn.innerHTML = 'Đăng nhập';
+  }
+});
+
+document.getElementById('registerBtn')?.addEventListener('click', async () => {
+  const usernameInput = document.getElementById('regUsername').value.trim();
+  const passwordInput = document.getElementById('regPassword').value.trim();
+  
+  if (!usernameInput || !passwordInput) return alert('Nhập username và password.');
+  const btn = document.getElementById('registerBtn');
+  btn.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px;"></div>';
+  
+  try {
+    const res = await fetch('/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: usernameInput, password: passwordInput })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    
+    alert('Đăng ký thành công! Vui lòng đăng nhập.');
+    document.getElementById('showLoginBtn').click();
+  } catch (err) {
+    alert('Đăng ký thất bại: ' + err.message);
+  } finally {
+    btn.innerHTML = 'Tạo tài khoản';
+  }
+});
+
+document.getElementById('seedAdminBtn')?.addEventListener('click', async () => {
+  const secret = prompt('Nhập Secret Key để thực hiện Seed (Mặc định: cron-secret-123):');
+  if (!secret) return;
+  
+  try {
+    const res = await fetch('/auth/seed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-secret-key': secret },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    alert(data.message || 'Thành công');
+  } catch (err) {
+    alert('Lỗi: ' + err.message);
+  }
+});
+
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+  handleLogout();
+});
 
 function activateTab(tabName) {
   tabButtons.forEach((button) => {
@@ -166,20 +312,6 @@ tabButtons.forEach((button) => {
   button.addEventListener('click', () => {
     activateTab(button.getAttribute('data-tab-target'));
   });
-});
-
-document.getElementById('saveAccessBtn').addEventListener('click', () => {
-  saveAccessState({
-    roles: document.getElementById('accessRoles').value.trim() || DEFAULT_ACCESS.roles,
-    permissions: document.getElementById('accessPermissions').value.trim() || DEFAULT_ACCESS.permissions,
-  });
-  alert('Đã lưu quyền demo.');
-});
-
-document.getElementById('resetAccessBtn').addEventListener('click', () => {
-  saveAccessState(DEFAULT_ACCESS);
-  syncAccessInputs();
-  alert('Đã khôi phục quyền demo mặc định.');
 });
 
 // -----------------------------------------------------------------------------
@@ -291,7 +423,7 @@ function renderTasks(tasks) {
                 <td><span class="pill">${task.status}</span></td>
                 <td style="text-align: right; white-space: nowrap;">
                   <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; margin-right: 0.25rem;" data-view-log="${task.id}">Xem Log</button>
-                  <button class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" data-delete-task="${task.id}">Xóa</button>
+                  ${(window.currentUserPayload?.roles?.includes('admin') || window.currentUserPayload?.permissions?.includes('manage:all')) ? `<button class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" data-delete-task="${task.id}">Xóa</button>` : ''}
                 </td>
               </tr>
             `,
@@ -416,8 +548,8 @@ function renderEmployees(payload) {
                 <td>${employee.isSynced ? 'Yes' : 'No'}</td>
                 <td><span class="pill">${employee.deletedAt ? 'DELETED' : 'ACTIVE'}</span></td>
                 <td style="text-align: right; white-space: nowrap;">
-                  <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; margin-right: 0.25rem;" data-edit-employee="${employee.id}">Sửa</button>
-                  <button class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" data-remove-employee="${employee.id}">Xóa</button>
+                  ${(window.currentUserPayload?.permissions?.includes('employee:update') || window.currentUserPayload?.roles?.includes('admin') || window.currentUserPayload?.permissions?.includes('manage:all')) ? `<button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; margin-right: 0.25rem;" data-edit-employee="${employee.id}">Sửa</button>` : ''}
+                  ${(window.currentUserPayload?.roles?.includes('admin') || window.currentUserPayload?.permissions?.includes('manage:all')) ? `<button class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" data-remove-employee="${employee.id}">Xóa</button>` : ''}
                 </td>
               </tr>
             `,
@@ -546,12 +678,4 @@ document.getElementById('scheduleSyncBtn').addEventListener('click', async () =>
 // -----------------------------------------------------------------------------
 // BOOTSTRAP
 // -----------------------------------------------------------------------------
-applyDefaultAccess();
-loadTasks();
-loadEmployees();
-
-if (taskPollingInterval) clearInterval(taskPollingInterval);
-taskPollingInterval = setInterval(() => loadTasks(true), 5000);
-
-if (employeePollingInterval) clearInterval(employeePollingInterval);
-employeePollingInterval = setInterval(() => loadEmployees(true), 7000);
+checkGateway();

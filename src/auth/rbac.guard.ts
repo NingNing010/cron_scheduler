@@ -1,22 +1,15 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
 import { PERMISSIONS_KEY, ROLES_KEY } from './rbac.decorator';
 import { DemoPermission, DemoRole } from './rbac.types';
 
-const parseHeaderList = (value: unknown): string[] => {
-  if (typeof value !== 'string') {
-    return [];
-  }
-
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-};
-
 @Injectable()
 export class RbacGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly jwtService: JwtService
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const requiredRoles = this.reflector.getAllAndOverride<DemoRole[]>(ROLES_KEY, [context.getHandler(), context.getClass()]) ?? [];
@@ -27,14 +20,27 @@ export class RbacGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest();
-    const headerRoles = parseHeaderList(request.headers['x-roles'] ?? request.headers['x-role']);
-    const headerPermissions = parseHeaderList(request.headers['x-permissions'] ?? request.headers['x-permission']);
+    const authHeader = request.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new UnauthorizedException('Không tìm thấy token xác thực');
+    }
 
-    const userRoles = new Set<string>(headerRoles);
-    const userPermissions = new Set<string>(headerPermissions);
+    const token = authHeader.split(' ')[1];
+    let payload: any;
+    
+    try {
+      payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET || 'super-secret-key' });
+      request.user = payload; // Attach user to request
+    } catch (e) {
+      throw new UnauthorizedException('Token không hợp lệ hoặc đã hết hạn');
+    }
+
+    const userRoles = new Set<string>(payload.roles || []);
+    const userPermissions = new Set<string>(payload.permissions || []);
 
     const hasRole = !requiredRoles.length || requiredRoles.some((role) => userRoles.has(role));
-    const hasPermissions = !requiredPermissions.length || requiredPermissions.every((permission) => userPermissions.has(permission));
+    const hasPermissions = !requiredPermissions.length || userPermissions.has('manage:all') || requiredPermissions.every((permission) => userPermissions.has(permission));
 
     if (!hasRole || !hasPermissions) {
       throw new ForbiddenException('Bạn không có quyền thực hiện thao tác này');

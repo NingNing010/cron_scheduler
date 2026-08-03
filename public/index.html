@@ -7,225 +7,251 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <!-- HEADER NAVBAR -->
-    <header class="top-nav">
-      <div class="nav-content">
-        <div class="logo">
+    <!-- AUTH GATEWAY -->
+    <div id="auth-gateway" class="gateway-container">
+      <div class="gateway-card">
+        <div class="logo" style="justify-content: center; margin-bottom: 1.5rem;">
           <span class="logo-icon">⚡</span>
           <strong>CronMail Pro</strong>
-          <span class="tag">Production Dashboard</span>
         </div>
-        <div class="tech-stack">
-          <span>NestJS</span> • <span>BullMQ</span> • <span>Prisma</span> • <span>Redis</span> • <span>Nodemailer</span>
+        <h2 id="authTitle" style="text-align: center; margin-bottom: 1rem;">Đăng Nhập Hệ Thống</h2>
+        
+        <div id="loginForm" class="form-grid">
+          <div class="form-group full-width">
+            <label for="loginUsername">Tên đăng nhập</label>
+            <input id="loginUsername" type="text" placeholder="admin" value="admin" />
+          </div>
+          <div class="form-group full-width">
+            <label for="loginPassword">Mật khẩu</label>
+            <input id="loginPassword" type="password" placeholder="password123" value="password123" />
+          </div>
+          <div class="form-actions full-width" style="flex-direction: column; gap: 0.5rem;">
+            <button id="loginBtn" type="button" class="btn btn-primary" style="width: 100%;">Đăng nhập</button>
+            <div style="text-align: center; font-size: 0.9rem; margin-top: 0.5rem;">
+              Chưa có tài khoản? <a href="#" id="showRegisterBtn" style="color: #2563eb;">Đăng ký</a>
+            </div>
+            <hr style="width: 100%; border: 0; border-top: 1px solid #e2e8f0; margin: 0.5rem 0;" />
+            <button id="seedAdminBtn" type="button" class="btn btn-secondary" style="width: 100%;">Seed Database (Tạo Roles & Admin)</button>
+          </div>
+        </div>
+
+        <div id="registerForm" class="form-grid is-hidden">
+          <div class="form-group full-width">
+            <label for="regUsername">Tên đăng nhập mới</label>
+            <input id="regUsername" type="text" placeholder="user123" />
+          </div>
+          <div class="form-group full-width">
+            <label for="regPassword">Mật khẩu</label>
+            <input id="regPassword" type="password" placeholder="******" />
+          </div>
+          <div class="form-actions full-width" style="flex-direction: column; gap: 0.5rem;">
+            <button id="registerBtn" type="button" class="btn btn-primary" style="width: 100%;">Tạo tài khoản</button>
+            <div style="text-align: center; font-size: 0.9rem; margin-top: 0.5rem;">
+              Đã có tài khoản? <a href="#" id="showLoginBtn" style="color: #2563eb;">Đăng nhập</a>
+            </div>
+          </div>
         </div>
       </div>
-    </header>
+    </div>
 
-    <!-- MAIN CONTENT -->
-    <main class="container">
-      <nav class="feature-tabs" aria-label="Dashboard sections">
-        <button class="feature-tab is-active" type="button" data-tab-target="access">Quyền</button>
-        <button class="feature-tab" type="button" data-tab-target="tasks">Cron Mail</button>
-        <button class="feature-tab" type="button" data-tab-target="health-sync">Health / Sync</button>
-        <button class="feature-tab" type="button" data-tab-target="employees">Employee</button>
-      </nav>
-
-      <section class="panel tab-panel" data-tab-panel="access">
-        <div class="panel-header">
-          <div>
-            <h2>Demo Access Control</h2>
-            <p class="subtitle">Nhập quyền demo để test `@Roles` và `@Permissions` từ frontend.</p>
+    <!-- MAIN DASHBOARD -->
+    <div id="app-dashboard" class="is-hidden">
+      <!-- HEADER NAVBAR -->
+      <header class="top-nav">
+        <div class="nav-content">
+          <div class="logo">
+            <span class="logo-icon">⚡</span>
+            <strong>CronMail Pro</strong>
+            <span class="tag">Production Dashboard</span>
+          </div>
+          <div class="user-info">
+            <span id="headerUserText" style="margin-right: 1rem; font-weight: 500;">Xin chào, Guest</span>
+            <button id="logoutBtn" type="button" class="btn btn-secondary btn-sm">Đăng xuất</button>
           </div>
         </div>
+      </header>
 
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="accessRoles">Roles</label>
-            <input id="accessRoles" type="text" placeholder="admin,manager,viewer" />
-          </div>
-          <div class="form-group">
-            <label for="accessPermissions">Permissions</label>
-            <input id="accessPermissions" type="text" placeholder="employee:read,employee:create,..." />
-          </div>
-          <div class="form-actions full-width">
-            <button id="saveAccessBtn" type="button" class="btn btn-primary">Lưu quyền demo</button>
-            <button id="resetAccessBtn" type="button" class="btn btn-secondary">Khôi phục mặc định</button>
-          </div>
-        </div>
-      </section>
+      <!-- MAIN CONTENT -->
+      <main class="container">
+        <nav class="feature-tabs" aria-label="Dashboard sections">
+          <button class="feature-tab is-active" type="button" data-tab-target="tasks">Cron Mail</button>
+          <button class="feature-tab" type="button" data-tab-target="health-sync">Health / Sync</button>
+          <button class="feature-tab" type="button" data-tab-target="employees">Employee</button>
+        </nav>
 
-      <!-- KHỐI TẠO TASK GỬI MAIL -->
-      <section class="panel tab-panel is-hidden" data-tab-panel="tasks">
-        <div class="panel-header">
-          <div>
-            <h2>Tạo Tác Vụ Lập Lịch Mới</h2>
-            <p class="subtitle">Thiết lập thời gian và nội dung email tự động gửi đi qua hệ thống hàng đợi Redis.</p>
-          </div>
-        </div>
-
-        <form id="createTaskForm" class="form-grid">
-          <div class="form-group">
-            <label for="taskName">Tên tác vụ</label>
-            <input id="taskName" type="text" value="Gửi Báo Cáo Doanh Thu" placeholder="Nhập tên dễ nhớ..." />
+        <!-- KHỐI TẠO TASK GỬI MAIL -->
+        <section class="panel tab-panel" data-tab-panel="tasks">
+          <div class="panel-header">
+            <div>
+              <h2>Tạo Tác Vụ Lập Lịch Mới</h2>
+              <p class="subtitle">Thiết lập thời gian và nội dung email tự động gửi đi qua hệ thống hàng đợi Redis.</p>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label for="taskCronExpression">Chu kỳ Cron (6 trường - Có giây)</label>
-            <input id="taskCronExpression" type="text" value="*/10 * * * * *" placeholder="vd: */10 * * * * *" />
-            <small class="help-text">Mặc định: <code>*/10 * * * * *</code> (Gửi tự động mỗi 10 giây)</small>
-          </div>
+          <form id="createTaskForm" class="form-grid">
+            <div class="form-group">
+              <label for="taskName">Tên tác vụ</label>
+              <input id="taskName" type="text" value="Gửi Báo Cáo Doanh Thu" placeholder="Nhập tên dễ nhớ..." />
+            </div>
 
-          <div class="form-group">
-            <label for="taskRecipientEmail">Email người nhận</label>
-            <input id="taskRecipientEmail" type="email" value="email_cua_ban@gmail.com" placeholder="name@example.com" />
-          </div>
+            <div class="form-group">
+              <label for="taskCronExpression">Chu kỳ Cron (6 trường - Có giây)</label>
+              <input id="taskCronExpression" type="text" value="*/10 * * * * *" placeholder="vd: */10 * * * * *" />
+              <small class="help-text">Mặc định: <code>*/10 * * * * *</code> (Gửi tự động mỗi 10 giây)</small>
+            </div>
 
-          <div class="form-group">
-            <label for="taskSubject">Tiêu đề Email</label>
-            <input id="taskSubject" type="text" value="Thông báo từ hệ thống tự động" />
-          </div>
+            <div class="form-group">
+              <label for="taskRecipientEmail">Email người nhận</label>
+              <input id="taskRecipientEmail" type="email" value="email_cua_ban@gmail.com" placeholder="name@example.com" />
+            </div>
 
-          <div class="form-group full-width">
-            <label for="taskContent">Nội dung thông điệp</label>
-            <textarea id="taskContent" rows="2" placeholder="Nhập nội dung email sẽ gửi...">Đây là email tự động được lập lịch và phát đi từ backend NestJS kết hợp BullMQ.</textarea>
-          </div>
+            <div class="form-group">
+              <label for="taskSubject">Tiêu đề Email</label>
+              <input id="taskSubject" type="text" value="Thông báo từ hệ thống tự động" />
+            </div>
 
-          <div class="form-actions full-width">
-            <button id="createTaskBtn" type="button" class="btn btn-primary">
-              <span>+</span> Thêm Tác Vụ Gửi Mail
+            <div class="form-group full-width">
+              <label for="taskContent">Nội dung thông điệp</label>
+              <textarea id="taskContent" rows="2" placeholder="Nhập nội dung email sẽ gửi...">Đây là email tự động được lập lịch và phát đi từ backend NestJS kết hợp BullMQ.</textarea>
+            </div>
+
+            <div class="form-actions full-width">
+              <button id="createTaskBtn" type="button" class="btn btn-primary">
+                <span>+</span> Thêm Tác Vụ Gửi Mail
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- KHỐI DANH SÁCH TÁC VỤ ĐANG CHẠY -->
+        <section class="panel tab-panel" data-tab-panel="tasks">
+          <div class="panel-header">
+            <div>
+              <h2>Danh Sách Tác Vụ & Hàng Đợi</h2>
+              <p class="subtitle">Hệ thống tự động cập nhật thời gian chạy tiếp theo mỗi 5 giây.</p>
+            </div>
+            <button id="refreshTasksBtn" type="button" class="btn btn-secondary">
+              ↻ Làm mới
             </button>
           </div>
-        </form>
-      </section>
 
-      <!-- KHỐI DANH SÁCH TÁC VỤ ĐANG CHẠY -->
-      <section class="panel tab-panel is-hidden" data-tab-panel="tasks">
-        <div class="panel-header">
-          <div>
-            <h2>Danh Sách Tác Vụ & Hàng Đợi</h2>
-            <p class="subtitle">Hệ thống tự động cập nhật thời gian chạy tiếp theo mỗi 5 giây.</p>
+          <div class="table-responsive">
+            <div id="taskOutput" class="loading-state">Đang tải dữ liệu từ PostgreSQL...</div>
           </div>
-          <button id="refreshTasksBtn" type="button" class="btn btn-secondary">
-            ↻ Làm mới
-          </button>
-        </div>
+        </section>
 
-        <div class="table-responsive">
-          <div id="taskOutput" class="loading-state">Đang tải dữ liệu từ SQLite...</div>
-        </div>
-      </section>
+        <section class="panel tab-panel is-hidden" data-tab-panel="health-sync">
+          <div class="panel-header">
+            <div>
+              <h2>Health & Sync</h2>
+              <p class="subtitle">Kiểm tra Postgres / MariaDB và hẹn lịch đồng bộ Employee theo CRON.</p>
+            </div>
+            <button id="runHealthCheckBtn" type="button" class="btn btn-secondary">Chạy health check</button>
+          </div>
 
-      <section class="panel tab-panel is-hidden" data-tab-panel="health-sync">
-        <div class="panel-header">
-          <div>
-            <h2>Health & Sync</h2>
-            <p class="subtitle">Kiểm tra Postgres / MariaDB và hẹn lịch đồng bộ Employee theo CRON.</p>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="syncJobName">Tên job sync</label>
+              <input id="syncJobName" type="text" value="Employee Sync Job" />
+            </div>
+            <div class="form-group">
+              <label for="syncCronExpression">Cron expression</label>
+              <input id="syncCronExpression" type="text" value="*/10 * * * * *" />
+            </div>
+            <div class="form-group">
+              <label for="syncBatchSize">Batch size</label>
+              <input id="syncBatchSize" type="number" value="1000" min="100" max="5000" />
+            </div>
+            <div class="form-actions full-width">
+              <button id="runSyncNowBtn" type="button" class="btn btn-primary">Đồng bộ ngay</button>
+              <button id="scheduleSyncBtn" type="button" class="btn btn-secondary">Hẹn lịch sync</button>
+            </div>
+            <div class="full-width" id="healthOutput" style="padding: 0.75rem 1rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; color: #334155;">
+              Chưa chạy health check.
+            </div>
           </div>
-          <button id="runHealthCheckBtn" type="button" class="btn btn-secondary">Chạy health check</button>
-        </div>
+        </section>
 
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="syncJobName">Tên job sync</label>
-            <input id="syncJobName" type="text" value="Employee Sync Job" />
+        <section class="panel tab-panel is-hidden" data-tab-panel="employees">
+          <div class="panel-header">
+            <div>
+              <h2>Employee CRUD / Import / Export</h2>
+              <p class="subtitle">CRUD trên PostgreSQL, xuất Excel stream, import file lỗi đẩy lên MinIO local.</p>
+            </div>
+            <button id="refreshEmployeesBtn" type="button" class="btn btn-secondary">↻ Làm mới</button>
           </div>
-          <div class="form-group">
-            <label for="syncCronExpression">Cron expression</label>
-            <input id="syncCronExpression" type="text" value="*/10 * * * * *" />
-          </div>
-          <div class="form-group">
-            <label for="syncBatchSize">Batch size</label>
-            <input id="syncBatchSize" type="number" value="1000" min="100" max="5000" />
-          </div>
-          <div class="form-actions full-width">
-            <button id="runSyncNowBtn" type="button" class="btn btn-primary">Đồng bộ ngay</button>
-            <button id="scheduleSyncBtn" type="button" class="btn btn-secondary">Hẹn lịch sync</button>
-          </div>
-          <div class="full-width" id="healthOutput" style="padding: 0.75rem 1rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; color: #334155;">
-            Chưa chạy health check.
-          </div>
-        </div>
-      </section>
 
-      <section class="panel tab-panel is-hidden" data-tab-panel="employees">
-        <div class="panel-header">
-          <div>
-            <h2>Employee CRUD / Import / Export</h2>
-            <p class="subtitle">CRUD trên PostgreSQL, xuất Excel stream, import file lỗi đẩy lên MinIO local.</p>
-          </div>
-          <button id="refreshEmployeesBtn" type="button" class="btn btn-secondary">↻ Làm mới</button>
-        </div>
+          <form id="employeeForm" class="form-grid">
+            <input id="employeeId" type="hidden" />
+            <div class="form-group">
+              <label for="employeeCode">Mã nhân viên</label>
+              <input id="employeeCode" type="text" placeholder="EMP-001" />
+            </div>
+            <div class="form-group">
+              <label for="employeeFullName">Họ tên</label>
+              <input id="employeeFullName" type="text" placeholder="Nguyễn Văn A" />
+            </div>
+            <div class="form-group">
+              <label for="employeeEmail">Email</label>
+              <input id="employeeEmail" type="email" placeholder="employee@example.com" />
+            </div>
+            <div class="form-group">
+              <label for="employeePhone">Số điện thoại</label>
+              <input id="employeePhone" type="text" placeholder="0901234567" />
+            </div>
+            <div class="form-group">
+              <label for="employeeDepartment">Phòng ban</label>
+              <input id="employeeDepartment" type="text" placeholder="Operations" />
+            </div>
+            <div class="form-group">
+              <label for="employeePosition">Chức danh</label>
+              <input id="employeePosition" type="text" placeholder="Staff" />
+            </div>
+            <div class="form-group full-width">
+              <label for="employeeNotes">Ghi chú</label>
+              <textarea id="employeeNotes" rows="2" placeholder="Ghi chú thêm..."></textarea>
+            </div>
+            <div class="form-group full-width">
+              <label for="employeeAvatarUrl">Avatar URL / MinIO file url</label>
+              <input id="employeeAvatarUrl" type="text" placeholder="https://..." />
+            </div>
+            <div class="form-actions full-width">
+              <button id="saveEmployeeBtn" type="button" class="btn btn-primary">Tạo nhân viên</button>
+              <button id="resetEmployeeBtn" type="button" class="btn btn-secondary">Reset form</button>
+            </div>
+          </form>
 
-        <form id="employeeForm" class="form-grid">
-          <input id="employeeId" type="hidden" />
-          <div class="form-group">
-            <label for="employeeCode">Mã nhân viên</label>
-            <input id="employeeCode" type="text" placeholder="EMP-001" />
+          <div class="form-grid" style="margin-top: 1rem; align-items: end;">
+            <div class="form-group">
+              <label for="employeeBulkCount">Tạo nhanh dữ liệu</label>
+              <input id="employeeBulkCount" type="number" value="1000" min="1" max="200000" />
+            </div>
+            <div class="form-actions">
+              <button id="bulkGenerateBtn" type="button" class="btn btn-secondary">Tạo hàng loạt</button>
+              <button id="exportEmployeesBtn" type="button" class="btn btn-secondary">Export Excel</button>
+            </div>
+            <div class="form-group">
+              <label for="employeeImportFile">Import Excel</label>
+              <input id="employeeImportFile" type="file" accept=".xlsx,.xls" />
+            </div>
+            <div class="form-actions">
+              <button id="importEmployeesBtn" type="button" class="btn btn-secondary">Import file</button>
+            </div>
+            <div class="form-group">
+              <label for="minioUploadFile">Upload file lên MinIO</label>
+              <input id="minioUploadFile" type="file" />
+            </div>
+            <div class="form-actions">
+              <button id="uploadMinioBtn" type="button" class="btn btn-secondary">Upload MinIO</button>
+            </div>
           </div>
-          <div class="form-group">
-            <label for="employeeFullName">Họ tên</label>
-            <input id="employeeFullName" type="text" placeholder="Nguyễn Văn A" />
-          </div>
-          <div class="form-group">
-            <label for="employeeEmail">Email</label>
-            <input id="employeeEmail" type="email" placeholder="employee@example.com" />
-          </div>
-          <div class="form-group">
-            <label for="employeePhone">Số điện thoại</label>
-            <input id="employeePhone" type="text" placeholder="0901234567" />
-          </div>
-          <div class="form-group">
-            <label for="employeeDepartment">Phòng ban</label>
-            <input id="employeeDepartment" type="text" placeholder="Operations" />
-          </div>
-          <div class="form-group">
-            <label for="employeePosition">Chức danh</label>
-            <input id="employeePosition" type="text" placeholder="Staff" />
-          </div>
-          <div class="form-group full-width">
-            <label for="employeeNotes">Ghi chú</label>
-            <textarea id="employeeNotes" rows="2" placeholder="Ghi chú thêm..."></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label for="employeeAvatarUrl">Avatar URL / MinIO file url</label>
-            <input id="employeeAvatarUrl" type="text" placeholder="https://..." />
-          </div>
-          <div class="form-actions full-width">
-            <button id="saveEmployeeBtn" type="button" class="btn btn-primary">Tạo nhân viên</button>
-            <button id="resetEmployeeBtn" type="button" class="btn btn-secondary">Reset form</button>
-          </div>
-        </form>
 
-        <div class="form-grid" style="margin-top: 1rem; align-items: end;">
-          <div class="form-group">
-            <label for="employeeBulkCount">Tạo nhanh dữ liệu</label>
-            <input id="employeeBulkCount" type="number" value="1000" min="1" max="200000" />
+          <div class="table-responsive" style="margin-top: 1.25rem;">
+            <div id="employeeOutput" class="loading-state">Đang tải dữ liệu nhân viên...</div>
           </div>
-          <div class="form-actions">
-            <button id="bulkGenerateBtn" type="button" class="btn btn-secondary">Tạo hàng loạt</button>
-            <button id="exportEmployeesBtn" type="button" class="btn btn-secondary">Export Excel</button>
-          </div>
-          <div class="form-group">
-            <label for="employeeImportFile">Import Excel</label>
-            <input id="employeeImportFile" type="file" accept=".xlsx,.xls" />
-          </div>
-          <div class="form-actions">
-            <button id="importEmployeesBtn" type="button" class="btn btn-secondary">Import file</button>
-          </div>
-          <div class="form-group">
-            <label for="minioUploadFile">Upload file lên MinIO</label>
-            <input id="minioUploadFile" type="file" />
-          </div>
-          <div class="form-actions">
-            <button id="uploadMinioBtn" type="button" class="btn btn-secondary">Upload MinIO</button>
-          </div>
-        </div>
-
-        <div class="table-responsive" style="margin-top: 1.25rem;">
-          <div id="employeeOutput" class="loading-state">Đang tải dữ liệu nhân viên...</div>
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
 
     <!-- HỘP THOẠI MODAL XEM LỊCH SỬ LOG -->
     <div id="logModal" class="modal">

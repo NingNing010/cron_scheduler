@@ -1,4 +1,4 @@
-export type DemoRole = 'admin' | 'manager' | 'viewer';
+export type DemoRole = 'admin' | 'manager' | 'viewer' | 'employee';
 
 export type DemoPermission =
   | 'employee:read'
@@ -11,7 +11,12 @@ export type DemoPermission =
   | 'file:upload'
   | 'health:read'
   | 'sync:run'
-  | 'sync:schedule';
+  | 'sync:schedule'
+  | 'task:read'
+  | 'task:create'
+  | 'task:update'
+  | 'task:delete'
+  | 'manage:all';
 
 export type DemoAccessToken = {
   roles: DemoRole[];
