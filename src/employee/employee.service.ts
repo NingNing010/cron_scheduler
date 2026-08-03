@@ -351,19 +351,25 @@ export class EmployeeService {
       currentBatch = [];
     };
 
+    let colOffset = 0;
+
     for await (const worksheetReader of workbookReader) {
       for await (const row of worksheetReader) {
         if (row.number === 1) {
+          const firstHeader = String(row.getCell(1).text ?? '').trim().toUpperCase();
+          if (firstHeader === 'ID') {
+            colOffset = 1;
+          }
           continue;
         }
 
-        const code = String(row.getCell(1).text ?? '').trim();
-        const fullName = String(row.getCell(2).text ?? '').trim();
-        const email = String(row.getCell(3).text ?? '').trim();
-        const phone = String(row.getCell(4).text ?? '').trim();
-        const department = String(row.getCell(5).text ?? '').trim();
-        const position = String(row.getCell(6).text ?? '').trim();
-        const notes = String(row.getCell(7).text ?? '').trim();
+        const code = String(row.getCell(1 + colOffset).text ?? '').trim();
+        const fullName = String(row.getCell(2 + colOffset).text ?? '').trim();
+        const email = String(row.getCell(3 + colOffset).text ?? '').trim();
+        const phone = String(row.getCell(4 + colOffset).text ?? '').trim();
+        const department = String(row.getCell(5 + colOffset).text ?? '').trim();
+        const position = String(row.getCell(6 + colOffset).text ?? '').trim();
+        const notes = String(row.getCell(7 + colOffset).text ?? '').trim();
 
         currentBatch.push({
           code,

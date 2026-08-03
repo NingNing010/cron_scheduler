@@ -8,7 +8,7 @@ import { BulkGenerateEmployeeDto } from './dto/bulk-generate.dto';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { EmployeeService } from './employee.service';
-import { Permissions } from '../auth/rbac.decorator';
+import { Permissions, Roles } from '../auth/rbac.decorator';
 import { RbacGuard } from '../auth/rbac.guard';
 
 const uploadDir = join(process.cwd(), '.tmp', 'employee-imports');
@@ -35,6 +35,12 @@ export class EmployeeController {
     });
   }
 
+  @Get('export')
+  @Permissions('employee:read')
+  export(@Res({ passthrough: false }) response: any, @Query('search') search?: string) {
+    return this.employeeService.exportToExcel(response, { search });
+  }
+
   @Get(':id')
   @Permissions('employee:read')
   findOne(@Param('id', ParseIntPipe) id: number) {
@@ -48,25 +54,19 @@ export class EmployeeController {
   }
 
   @Delete(':id')
-  @Permissions('employee:delete')
+  @Roles('admin')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.employeeService.remove(id);
   }
 
   @Post('bulk-generate')
-  @Permissions('employee:bulk-create')
+  @Permissions('employee:create')
   bulkGenerate(@Body() dto: BulkGenerateEmployeeDto) {
     return this.employeeService.bulkGenerate(dto);
   }
 
-  @Get('export')
-  @Permissions('employee:export')
-  export(@Res({ passthrough: false }) response: any, @Query('search') search?: string) {
-    return this.employeeService.exportToExcel(response, { search });
-  }
-
   @Post('import')
-  @Permissions('employee:import')
+  @Permissions('employee:create')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
