@@ -1,4 +1,4 @@
-import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Post, UploadedFile, UseInterceptors, UseGuards } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { unlinkSync } from 'fs';
 import { diskStorage } from 'multer';
@@ -6,15 +6,19 @@ import { extname, join } from 'path';
 import { mkdirSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { MinioService } from './minio.service';
+import { RbacGuard } from '../auth/rbac.guard';
+import { Permissions } from '../auth/rbac.decorator';
 
 const uploadDir = join(process.cwd(), '.tmp', 'uploads');
 mkdirSync(uploadDir, { recursive: true });
 
 @Controller('files')
+@UseGuards(RbacGuard)
 export class FilesController {
   constructor(private readonly minioService: MinioService) {}
 
   @Post('upload')
+  @Permissions('employee:create')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({

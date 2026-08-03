@@ -4,9 +4,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { HealthController } from './health.controller';
 import { MariaDbHealthIndicator } from './mariadb.health.indicator';
 import { PostgresHealthIndicator } from './postgres.health.indicator';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [TerminusModule, PrismaModule],
+  imports: [TerminusModule, PrismaModule, AuthModule],
   controllers: [HealthController],
   providers: [PostgresHealthIndicator, MariaDbHealthIndicator],
 })
