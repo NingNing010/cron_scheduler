@@ -24,10 +24,11 @@ export class SyncService {
     let syncedCount = 0;
     let deletedCount = 0;
     let failedCount = 0;
+    let lastProcessedId = 0;
 
     while (true) {
       const rows = await this.postgresPrismaService.employee.findMany({
-        where: { isSynced: false },
+        where: { isSynced: false, id: { gt: lastProcessedId } },
         orderBy: { id: 'asc' },
         take: batchSize,
       });
@@ -36,13 +37,16 @@ export class SyncService {
         break;
       }
 
+      lastProcessedId = rows[rows.length - 1].id;
       scanned += rows.length;
 
       const activeRows = rows.filter((row) => !row.deletedAt);
       const deletedRows = rows.filter((row) => Boolean(row.deletedAt));
+      const successfulIds: number[] = [];
+      const syncedAt = new Date();
 
-      try {
-        for (const row of activeRows) {
+      for (const row of activeRows) {
+        try {
           await this.mariaDbPrismaService.employee.upsert({
             where: { code: row.code },
             create: {
@@ -75,27 +79,34 @@ export class SyncService {
               deletedAt: null,
             },
           });
+          successfulIds.push(row.id);
+          syncedCount++;
+        } catch (error) {
+          failedCount++;
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Sync failed for employee ${row.code}: ${message}`);
         }
+      }
 
-        if (deletedRows.length) {
+      if (deletedRows.length) {
+        try {
           await this.mariaDbPrismaService.employee.deleteMany({
             where: { code: { in: deletedRows.map((row) => row.code) } },
           });
+          successfulIds.push(...deletedRows.map((row) => row.id));
+          deletedCount += deletedRows.length;
+        } catch (error) {
+          failedCount += deletedRows.length;
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Delete batch failed: ${message}`);
         }
+      }
 
-        const syncedAt = new Date();
+      if (successfulIds.length > 0) {
         await this.postgresPrismaService.employee.updateMany({
-          where: { id: { in: rows.map((row) => row.id) } },
+          where: { id: { in: successfulIds } },
           data: { isSynced: true, syncedAt },
         });
-
-        syncedCount += activeRows.length;
-        deletedCount += deletedRows.length;
-      } catch (error) {
-        failedCount += rows.length;
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Sync batch failed: ${message}`);
-        throw error;
       }
     }
 
