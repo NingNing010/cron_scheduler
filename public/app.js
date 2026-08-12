@@ -130,6 +130,28 @@ function handleLogout() {
 }
 
 function checkGateway() {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  const urlToken = urlParams.get('token');
+  if (urlToken) {
+    saveAuthToken(urlToken);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  const resetToken = urlParams.get('reset_token');
+  if (resetToken) {
+    saveAuthToken(null);
+    document.getElementById('resetToken').value = resetToken;
+    document.getElementById('loginForm').classList.add('is-hidden');
+    document.getElementById('registerForm').classList.add('is-hidden');
+    document.getElementById('forgotPasswordForm').classList.add('is-hidden');
+    document.getElementById('resetPasswordForm').classList.remove('is-hidden');
+    document.getElementById('authTitle').innerHTML = 'Đặt Lại Mật Khẩu';
+    document.getElementById('auth-gateway').classList.remove('is-hidden');
+    document.getElementById('app-dashboard').classList.add('is-hidden');
+    return;
+  }
+
   const token = getAuthToken();
   const gateway = document.getElementById('auth-gateway');
   const dashboard = document.getElementById('app-dashboard');
@@ -212,6 +234,7 @@ function applyPermissions(payload) {
 document.getElementById('showRegisterBtn')?.addEventListener('click', (e) => {
   e.preventDefault();
   document.getElementById('loginForm').classList.add('is-hidden');
+  document.getElementById('forgotPasswordForm').classList.add('is-hidden');
   document.getElementById('registerForm').classList.remove('is-hidden');
   document.getElementById('authTitle').innerHTML = 'Đăng Ký Tài Khoản';
 });
@@ -219,6 +242,22 @@ document.getElementById('showRegisterBtn')?.addEventListener('click', (e) => {
 document.getElementById('showLoginBtn')?.addEventListener('click', (e) => {
   e.preventDefault();
   document.getElementById('registerForm').classList.add('is-hidden');
+  document.getElementById('forgotPasswordForm').classList.add('is-hidden');
+  document.getElementById('loginForm').classList.remove('is-hidden');
+  document.getElementById('authTitle').innerHTML = 'Đăng Nhập Hệ Thống';
+});
+
+document.getElementById('showForgotPasswordBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  document.getElementById('loginForm').classList.add('is-hidden');
+  document.getElementById('registerForm').classList.add('is-hidden');
+  document.getElementById('forgotPasswordForm').classList.remove('is-hidden');
+  document.getElementById('authTitle').innerHTML = 'Quên Mật Khẩu';
+});
+
+document.getElementById('showLoginFromForgotBtn')?.addEventListener('click', (e) => {
+  e.preventDefault();
+  document.getElementById('forgotPasswordForm').classList.add('is-hidden');
   document.getElementById('loginForm').classList.remove('is-hidden');
   document.getElementById('authTitle').innerHTML = 'Đăng Nhập Hệ Thống';
 });
@@ -272,6 +311,57 @@ document.getElementById('registerBtn')?.addEventListener('click', async () => {
     alert('Đăng ký thất bại: ' + err.message);
   } finally {
     btn.innerHTML = 'Tạo tài khoản';
+  }
+});
+
+document.getElementById('forgotPasswordBtn')?.addEventListener('click', async () => {
+  const emailInput = document.getElementById('forgotEmail').value.trim();
+  if (!emailInput) return alert('Vui lòng nhập email');
+  
+  const btn = document.getElementById('forgotPasswordBtn');
+  btn.innerHTML = 'Đang gửi...';
+  
+  try {
+    const res = await fetch('/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: emailInput })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    
+    alert(data.message);
+  } catch (err) {
+    alert('Lỗi: ' + err.message);
+  } finally {
+    btn.innerHTML = 'Gửi yêu cầu khôi phục';
+  }
+});
+
+document.getElementById('resetPasswordBtn')?.addEventListener('click', async () => {
+  const token = document.getElementById('resetToken').value;
+  const newPassword = document.getElementById('resetPassword').value.trim();
+  
+  if (!newPassword) return alert('Vui lòng nhập mật khẩu mới');
+  
+  const btn = document.getElementById('resetPasswordBtn');
+  btn.innerHTML = 'Đang cập nhật...';
+  
+  try {
+    const res = await fetch('/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message);
+    
+    alert(data.message);
+    window.location.href = '/';
+  } catch (err) {
+    alert('Lỗi: ' + err.message);
+  } finally {
+    btn.innerHTML = 'Lưu mật khẩu mới';
   }
 });
 
